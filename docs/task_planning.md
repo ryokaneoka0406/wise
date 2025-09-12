@@ -17,7 +17,7 @@
    - `wise/` 以下に設計書のディレクトリ構造を雛形として用意する。
    - `__init__.py`, `cli.py` など最低限のエントリーポイントを追加。
 2. **内部 DB モデルの初期実装**
-   - SQLite を用いて `accounts`, `datasets`, `analyses`, `queries`, `sessions`, `messages` テーブルを定義する。
+   - SQLite を用いて `accounts`, `datasets`, `analysis`, `queries`, `sessions`, `messages` テーブルを定義する。
    - DB 初期化処理と簡易的な CRUD を用意する。
 
 ## フェーズ2: 認証と BigQuery 接続
