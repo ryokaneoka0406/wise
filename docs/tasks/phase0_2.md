@@ -8,7 +8,7 @@
 
 ## ステータス
 
-completed
+✅ Completed
 
 ## 調査結果
 
