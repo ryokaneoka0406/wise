@@ -378,7 +378,7 @@ def run_sql_readonly(project_id: str, sql: str, creds: Credentials, preview_rows
 
 ```python
 import argparse
-from auth import get_credentials
+from auth import get_credentials,run_oauth_flow
 from select_project import select_project_interactively
 from run_sql import run_sql_readonly
 from google.cloud import bigquery
