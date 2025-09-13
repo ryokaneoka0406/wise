@@ -39,7 +39,7 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 
 TOK_DB = "tokens.db"
-SCOPES = ["https://www.googleapis.com/auth/bigquery"]
+SCOPES = ["https://www.googleapis.com/auth/bigquery.readonly"]
 CLIENT_SECRETS = "client_secrets.json"
 
 def load_client_info():
