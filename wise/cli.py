@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from .db.models import init_db
+
 
 WELCOME_MESSAGE = "Welcome to Wise! Type 'exit' to quit."
 
 
 def main() -> None:
     """Entry point for the `wise` command."""
+    # Ensure local SQLite DB exists and has required tables
+    init_db()
     print(WELCOME_MESSAGE)
     while True:
         try:
