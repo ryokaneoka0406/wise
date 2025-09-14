@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.10.13"
 dependencies = []
 
+[project.scripts]
+wise = "wise.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
