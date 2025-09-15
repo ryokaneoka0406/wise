@@ -1,11 +1,18 @@
-"""Command-line interface for the wise project."""
+"""Command-line interface for the wise project.
+
+This wires the startup flow:
+- Initialize the SQLite DB tables
+- Start a chat session which triggers the first-time setup wizard
+  to save a refresh token when none exists, then transitions into chat.
+"""
 
 from __future__ import annotations
 
 from .db.models import init_db
+from .chat.session import start_session
 
 
-WELCOME_MESSAGE = "Welcome to Wise! Type 'exit' to quit."
+WELCOME_MESSAGE = "Welcome to Wise!"
 
 
 def main() -> None:
@@ -13,15 +20,8 @@ def main() -> None:
     # Ensure local SQLite DB exists and has required tables
     init_db()
     print(WELCOME_MESSAGE)
-    while True:
-        try:
-            user_input = input("you> ")
-        except EOFError:
-            break
-        if user_input.strip().lower() in {"exit", "quit"}:
-            print("assistant> Goodbye!")
-            break
-        print(f"assistant> Echo: {user_input}")
+    # Delegate to chat session which handles setup wizard and chat loop
+    start_session()
 
 
 if __name__ == "__main__":  # pragma: no cover

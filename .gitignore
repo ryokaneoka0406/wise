@@ -3,3 +3,84 @@ __pycache__/
 .venv/
 .ruff_cache/
 .pytest_cache/
+cred.json
+
+# OS
+.DS_Store
+
+# Editors / IDE
+.vscode/
+.idea/
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+pip-wheel-metadata/
+
+# Virtualenv / environment
+.env
+.env.*
+.envrc
+.direnv/
+.python-version
+
+# Logs
+logs/
+*.log
+
+# Coverage / type checking / caches
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.mypy_cache/
+.pytype/
+.pyre/
+.cache/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local databases and data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# Credentials / keys
+*.pem
+*.key
+*.p12
+
+# Compiled extensions
+*.pyd
+*.pyo
+*.so
+
+# Coverage dirs and reports
+coverage/
+
+# Sphinx / MkDocs build
+docs/_build/
+site/
+
+# Property-based tests / misc caches
+.hypothesis/
+
+# Editor swap/backup files
+*.swp
+*.swo
+*.orig
+Thumbs.db
+
+# PEP 582 local packages
+__pypackages__/
