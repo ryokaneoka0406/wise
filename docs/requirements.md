@@ -27,13 +27,13 @@ CLI アプリケーションとして実装する
   - アカウント作成
   - Google BigQuery の読み込み権限を付与
   - どの PJ の BQ にするか、どのデータセットにするかはここで設定
-- `\login` or `wise login`
+- `/login` or `wise login`
   - ログインし、上記のログインフローを再実行
 
 #### メタデータ作成
 
-- `\init` or `wise init`
-  - wise 起動中のチャット時に`\init` もしくは`wise init`で実行
+- `/init` or `wise init`
+  - wise 起動中のチャット時に`/init` もしくは`wise init`で実行
   - Google BigQuery のデータセットのテーブル構造を読み込み、メタデータファイルをマークダウンで作成する（/init コマンドで再実行できる）
     - データ全体の概要
       - PJ、データセット
