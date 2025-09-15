@@ -8,7 +8,7 @@
 
 ## ステータス
 
-ongoing
+completed
 
 ## 実施内容（2025-09-14）
 
@@ -16,10 +16,10 @@ ongoing
   - ブラウザでの Google OAuth を実行し、取得したリフレッシュトークンと email を DB に保存。
   - 実装箇所: `wise/auth/google.py`（OAuth 実装）、`wise/chat/session.py` の `_run_setup_wizard()`（OAuth 呼び出し）。
 - セットアップ完了後のチャットへの移行処理を実装。
-  - アカウント確認→なければウィザード→`sessions` 作成→チャットループ開始（メッセージは DB 保存）。
+  - アカウント確認 → なければウィザード →`sessions` 作成 → チャットループ開始（メッセージは DB 保存）。
   - 実装箇所: `wise/chat/session.py: start_session()`。
 - CLI 入口をチャットセッションに接続。
-  - 実装箇所: `wise/cli.py`（DB 初期化→`start_session()` を呼び出し）。
+  - 実装箇所: `wise/cli.py`（DB 初期化 →`start_session()` を呼び出し）。
 - 再ログインコマンドを OAuth 化。
   - `/login` / `/reauth` でブラウザ認証し、トークンを保存。
   - 実装箇所: `wise/chat/commands.py`。
@@ -32,7 +32,7 @@ ongoing
 
 ## 次アクション候補
 
-- OAuth フローの実装（ブラウザ起動→リフレッシュトークン取得→`accounts` 保存）。
+- OAuth フローの実装（ブラウザ起動 → リフレッシュトークン取得 →`accounts` 保存）。
 - `/login` に OAuth 起動を統合し、暫定入力を置き換え。
 
 ## 動作確認方法（現時点）
@@ -52,6 +52,7 @@ ongoing
   - 終了は `exit` または `quit`。
 
 注意: BigQuery API 呼び出しは未配線です（次ステップ）。仕様は `docs/research/auth_bq.md` を参照してください。
+
 - BQ クライアントの実配線（`wise/bq/client.py` 置換）。
 
 ## 提案（要確認）
