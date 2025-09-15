@@ -23,8 +23,8 @@ Login/OAuth            SQL Generator         File Output
 
 - **CLI / Chat インターフェース**: ユーザーからの自然言語入力を受け取り、指示結果を表示する。
 - **LLM Engine**: 入力とメタデータを元に SQL を生成し、ユーザーに提示する。分析や可視化向けのプロンプトを扱うモジュールに分割される。
-- **BigQuery API クライアント**: 認証済みアカウントで SQL を実行し、結果を取得する。
-- **Metadata Manager**: BigQuery のテーブル構造やサンプル値を読み取り、`data.md` として保存する。
+- **BigQuery API クライアント**: 認証済みアカウントで SQL を実行し、結果を取得する。また、メタデータ取得（datasets/tables/schema/samples）も提供する。
+- **Metadata Manager**: BigQuery クライアントから取得したスナップショットを用いて、テーブル構造やサンプル値を `metadata.md` としてレンダリング・保存する。
 - **Data Store**: クエリ結果やメタデータ、可視化画像をフォルダに保存する。
 - **Analysis Processor**: 保存済み CSV を読み込み、LLM を介して示唆を Markdown に出力する。
 - **Visualization Engine**: 指示に応じてグラフを描画し、画像として保存する。
