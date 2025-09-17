@@ -6,7 +6,7 @@
 
 ## ステータス
 
-ongoing
+completed
 
 ## 実装計画
 
