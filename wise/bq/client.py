@@ -13,7 +13,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, Tuple
 
 from google.auth.transport.requests import AuthorizedSession, Request
 from google.oauth2.credentials import Credentials
@@ -24,6 +24,7 @@ from ..db import models
 __all__ = [
     "BQClient",
     "BigQueryClientError",
+    "list_projects",
     "metadata_snapshot",
     "query",
 ]
@@ -36,6 +37,117 @@ class BigQueryClientError(RuntimeError):
         super().__init__(message)
         self.status_code = status_code
         self.payload = payload
+
+
+def _request_json(
+    session: AuthorizedSession,
+    method: str,
+    url: str,
+    *,
+    timeout: float,
+    params: Optional[dict[str, Any]] = None,
+    json_data: Any = None,
+) -> dict[str, Any]:
+    """Invoke an HTTP request and parse the JSON payload with shared error handling."""
+
+    response = session.request(method, url, params=params, json=json_data, timeout=timeout)
+    if response.status_code >= 400:
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = response.text
+        raise BigQueryClientError(
+            f"BigQuery API 呼び出しエラー ({response.status_code})", status_code=response.status_code, payload=payload
+        )
+    if not response.content:
+        return {}
+    try:
+        return response.json()
+    except ValueError as exc:  # pragma: no cover - unexpected server bug
+        raise BigQueryClientError("BigQuery API の応答を JSON として解析できませんでした。") from exc
+
+
+def _resolve_account(account_id: Optional[int], *, db_path: Optional[str] = None) -> Any:
+    accounts = models.list_accounts(db_path=db_path)
+    if account_id is not None:
+        for row in accounts:
+            if int(row["id"]) == int(account_id):
+                return row
+        raise BigQueryClientError(
+            f"account_id={account_id} が見つかりません。'wise login' を実行して認証してください。"
+        )
+
+    for row in accounts:
+        if row["refresh_token"]:
+            return row
+    raise BigQueryClientError("利用可能なアカウントが見つかりません。'wise login' で認証してください。")
+
+
+def _load_client_info() -> dict[str, str]:
+    env_path = os.getenv("WISE_GOOGLE_CLIENT_SECRETS")
+    candidate: Optional[Path] = Path(env_path) if env_path else None
+    if not candidate:
+        cwd = Path.cwd()
+        for name in ("cred.json", "client_secrets.json"):
+            p = cwd / name
+            if p.exists():
+                candidate = p
+                break
+        if not candidate:
+            candidate = cwd / "cred.json"
+
+    if not candidate.exists():
+        raise BigQueryClientError(
+            f"OAuth クライアントシークレットが見つかりません: {candidate}."
+            " 環境変数 WISE_GOOGLE_CLIENT_SECRETS または ./cred.json を配置してください。"
+        )
+
+    with candidate.open("r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    if "installed" in data:
+        config = data["installed"]
+    elif "web" in data:
+        config = data["web"]
+    else:
+        config = data
+
+    missing = [key for key in ("client_id", "client_secret", "token_uri") if key not in config]
+    if missing:
+        joined = ", ".join(missing)
+        raise BigQueryClientError(f"OAuth クライアント設定に不足項目があります: {joined}")
+    return config
+
+
+def _build_credentials(client_info: dict[str, str], refresh_token: str) -> Credentials:
+    try:
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            client_id=client_info["client_id"],
+            client_secret=client_info["client_secret"],
+            token_uri=client_info["token_uri"],
+            scopes=SCOPES,
+        )
+        creds.refresh(Request())
+    except Exception as exc:  # pragma: no cover - network failure is rare
+        raise BigQueryClientError("アクセストークンのリフレッシュに失敗しました。") from exc
+    return creds
+
+
+def _create_authorized_session(
+    account_id: Optional[int],
+    *,
+    db_path: Optional[str] = None,
+) -> Tuple[AuthorizedSession, Credentials, Any]:
+    client_info = _load_client_info()
+    account = _resolve_account(account_id, db_path=db_path)
+    refresh_token = account["refresh_token"]
+    if not refresh_token:
+        raise BigQueryClientError("指定されたアカウントに refresh_token が保存されていません。")
+
+    credentials = _build_credentials(client_info, refresh_token)
+    session = AuthorizedSession(credentials)
+    return session, credentials, account
 
 
 class BQClient:
@@ -61,18 +173,12 @@ class BQClient:
         self.project_id = project_id
         self.location = location
         self.account_id: int
-        self._db_path = db_path
         self._timeout = timeout if timeout is not None else self.DEFAULT_TIMEOUT
 
-        self._client_info = self._load_client_info()
-        account = self._resolve_account(account_id)
+        session, credentials, account = _create_authorized_session(account_id, db_path=db_path)
         self.account_id = int(account["id"])
-        refresh_token = account["refresh_token"]
-        if not refresh_token:
-            raise BigQueryClientError("指定されたアカウントに refresh_token が保存されていません。")
-
-        self._credentials = self._build_credentials(refresh_token)
-        self._session = AuthorizedSession(self._credentials)
+        self._credentials = credentials
+        self._session = session
 
     # ----------
     # Public API
@@ -196,94 +302,19 @@ class BQClient:
     # Helper routines
     # ---------------
 
-    def _resolve_account(self, account_id: Optional[int]) -> Any:
-        accounts = models.list_accounts(db_path=self._db_path)
-        if account_id is not None:
-            for row in accounts:
-                if int(row["id"]) == int(account_id):
-                    return row
-            raise BigQueryClientError(f"account_id={account_id} が見つかりません。'wise login' を実行して認証してください。")
-
-        for row in accounts:
-            if row["refresh_token"]:
-                return row
-        raise BigQueryClientError("利用可能なアカウントが見つかりません。'wise login' で認証してください。")
-
-    def _load_client_info(self) -> dict[str, str]:
-        env_path = os.getenv("WISE_GOOGLE_CLIENT_SECRETS")
-        candidate: Optional[Path] = Path(env_path) if env_path else None
-        if not candidate:
-            cwd = Path.cwd()
-            for name in ("cred.json", "client_secrets.json"):
-                p = cwd / name
-                if p.exists():
-                    candidate = p
-                    break
-            if not candidate:
-                candidate = cwd / "cred.json"
-
-        if not candidate.exists():
-            raise BigQueryClientError(
-                f"OAuth クライアントシークレットが見つかりません: {candidate}."
-                " 環境変数 WISE_GOOGLE_CLIENT_SECRETS または ./cred.json を配置してください。"
-            )
-
-        with candidate.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-        if "installed" in data:
-            config = data["installed"]
-        elif "web" in data:
-            config = data["web"]
-        else:
-            config = data
-
-        missing = [key for key in ("client_id", "client_secret", "token_uri") if key not in config]
-        if missing:
-            joined = ", ".join(missing)
-            raise BigQueryClientError(f"OAuth クライアント設定に不足項目があります: {joined}")
-        return config
-
-    def _build_credentials(self, refresh_token: str) -> Credentials:
-        try:
-            creds = Credentials(
-                token=None,
-                refresh_token=refresh_token,
-                client_id=self._client_info["client_id"],
-                client_secret=self._client_info["client_secret"],
-                token_uri=self._client_info["token_uri"],
-                scopes=SCOPES,
-            )
-            creds.refresh(Request())
-        except Exception as exc:  # pragma: no cover - network failure is rare
-            raise BigQueryClientError("アクセストークンのリフレッシュに失敗しました。") from exc
-        return creds
-
     def _full_url(self, path: str) -> str:
         return f"{self.BASE_URL}{path}"
 
     def _request(self, method: str, path: str, *, params: Optional[dict[str, Any]] = None, json: Any = None) -> dict[str, Any]:
         url = self._full_url(path)
-        response = self._session.request(
+        return _request_json(
+            self._session,
             method,
             url,
-            params=params,
-            json=json,
             timeout=self._timeout,
+            params=params,
+            json_data=json,
         )
-        if response.status_code >= 400:
-            try:
-                payload = response.json()
-            except ValueError:
-                payload = response.text
-            raise BigQueryClientError(
-                f"BigQuery API 呼び出しエラー ({response.status_code})", status_code=response.status_code, payload=payload
-            )
-        if not response.content:
-            return {}
-        try:
-            return response.json()
-        except ValueError as exc:  # pragma: no cover - unexpected server bug
-            raise BigQueryClientError("BigQuery API の応答を JSON として解析できませんでした。") from exc
 
     def _paginate(self, path: str, *, params: Optional[dict[str, Any]] = None) -> Iterable[dict[str, Any]]:
         token: Optional[str] = None
@@ -387,6 +418,34 @@ def query(
     client = BQClient(project_id=project_id, account_id=account_id, location=location)
     result = client.run_sql(sql, max_results=max_results, dry_run=dry_run, fetch_all=fetch_all)
     return result.get("rows", [])
+
+
+def list_projects(
+    *,
+    account_id: Optional[int] = None,
+    db_path: Optional[str] = None,
+    timeout: Optional[float] = None,
+) -> list[dict[str, Any]]:
+    """Return available BigQuery projects for the authenticated account."""
+
+    session, _, _ = _create_authorized_session(account_id, db_path=db_path)
+    url = f"{BQClient.BASE_URL}/projects"
+    effective_timeout = timeout if timeout is not None else BQClient.DEFAULT_TIMEOUT
+    projects: list[dict[str, Any]] = []
+    params = {"maxResults": 1000}
+    token: Optional[str] = None
+
+    while True:
+        query = dict(params)
+        if token:
+            query["pageToken"] = token
+        data = _request_json(session, "GET", url, timeout=effective_timeout, params=query)
+        projects.extend(data.get("projects", []))
+        token = data.get("nextPageToken") or data.get("pageToken") or None
+        if not token:
+            break
+
+    return projects
 
 
 def metadata_snapshot(
