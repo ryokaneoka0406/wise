@@ -1,8 +1,8 @@
-"""Command handlers for chat-mode backslash commands.
+"""Command handlers for chat-mode slash commands.
 
 Currently supports:
-- ``\login``: Re-run minimal setup to update the refresh token
-- ``\init``: Generate BigQuery metadata markdown via the metadata manager
+- ``/login``: Re-run minimal setup to update the refresh token
+- ``/init``: Generate BigQuery metadata markdown via the metadata manager
 """
 
 from __future__ import annotations
@@ -143,18 +143,13 @@ def _login() -> str:
 
 
 def handle_command(command: str) -> Tuple[bool, str | None]:
-    """Handle a backslash command.
+    """Handle a slash command.
 
     Returns (handled, reply). If not handled, (False, None).
     """
     cmd = command.strip()
-    # Normalize leading prefix to support both "/" and "\\"
-    if cmd.startswith("/"):
-        canonical = "\\" + cmd[1:]
-    else:
-        canonical = cmd
-    if canonical in {"\\login", "\\reauth"}:
+    if cmd in {"/login", "/reauth"}:
         return True, _login()
-    if canonical == "\\init":
+    if cmd == "/init":
         return True, _init()
     return False, None

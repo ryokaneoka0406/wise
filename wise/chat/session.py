@@ -55,8 +55,8 @@ def start_session() -> None:
         if text.lower() in {"exit", "quit"}:
             print("assistant> Goodbye!")
             break
-        if text.startswith("\\") or text.startswith("/"):
-            # Commands like \login handled here
+        if text.startswith("/"):
+            # Commands like /login handled here
             handled, reply = handle_command(text)
             if handled:
                 if reply:
