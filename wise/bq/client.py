@@ -225,16 +225,17 @@ class BQClient:
         return list(schema or [])
 
     def sample_rows(self, dataset_id: str, table_id: str, max_results: int = 5) -> list[dict[str, Any]]:
-        """Fetch up to ``max_results`` rows from the table using the data endpoint."""
+        """Fetch sample rows using ``jobs.query`` with ``SELECT * ... LIMIT``.
+
+        This approach reliably returns schema alongside rows, avoiding cases where
+        the tabledata endpoint omits schema and results cannot be mapped.
+        """
 
         if max_results <= 0:
             return []
-        path = f"/projects/{self.project_id}/datasets/{dataset_id}/tables/{table_id}/data"
-        params = {"maxResults": max_results}
-        data = self._request("GET", path, params=params)
-        schema_fields = (data.get("schema") or {}).get("fields") or []
-        rows = data.get("rows") or []
-        return self._format_rows(rows, schema_fields)
+        sql = f"SELECT * FROM `{dataset_id}.{table_id}` LIMIT {int(max_results)}"
+        result = self.run_sql(sql, max_results=max_results, fetch_all=False)
+        return result.get("rows", [])
 
     def run_sql(
         self,
