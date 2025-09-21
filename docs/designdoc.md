@@ -17,6 +17,9 @@ Setup Wizard          Metadata Manager      Data Store
      │                      │                   │
      ▼                      ▼                   ▼
 Login/OAuth            SQL Generator         File Output
+                        ▲
+                        │
+                 Metadata Enhancer
 ```
 
 各コンポーネントは次の役割を持つ：
@@ -25,6 +28,7 @@ Login/OAuth            SQL Generator         File Output
 - **LLM Engine**: 入力とメタデータを元に SQL を生成し、ユーザーに提示する。分析や可視化向けのプロンプトを扱うモジュールに分割される。
 - **BigQuery API クライアント**: 認証済みアカウントで SQL を実行し、結果を取得する。また、メタデータ取得（datasets/tables/schema/samples）も提供する。
 - **Metadata Manager**: BigQuery クライアントから取得したスナップショットを用いて、テーブル構造やサンプル値を `metadata.md` としてレンダリング・保存する。
+- **Metadata Enhancer（メタデータ補足モジュール）**: 機械的に取得された列名・サンプル値を分析し、各カラムの意味・単位・代表値/カテゴリ例・同義語/エイリアスを推定してメタデータに追記する（ユーザーの手動編集を前提）。
 - **Data Store**: クエリ結果やメタデータ、可視化画像をフォルダに保存する。
 - **Analysis Processor**: 保存済み CSV を読み込み、LLM を介して示唆を Markdown に出力する。
 - **Visualization Engine**: 指示に応じてグラフを描画し、画像として保存する。
@@ -41,6 +45,7 @@ Login/OAuth            SQL Generator         File Output
 - `/init` または `wise init` を実行すると、CLI 上でアクセス可能な BigQuery プロジェクト一覧を提示し、ユーザーが選択したプロジェクト配下のすべてのデータセットについてテーブル構造を取得してカラム情報やリレーションを含むメタデータを `metadata.md` として生成する。
 - 取得対象として列挙したプロジェクトおよびデータセットの情報はメタデータに保存され、後続のクエリ生成・分析フローで参照される。
 - メタデータはユーザーが編集可能であり、列名とサンプル値の両方を保持する。
+- 生成後にメタデータ補足モジュールが走り、各カラムの意味や単位、代表値・カテゴリ例、同義語・エイリアスなどの補足情報を自動付与する。
 
 ## クエリ生成と実行
 
@@ -71,6 +76,7 @@ wise/
  ├─ llm/
  │   ├─ base.py          # LLM 共通ラッパー
  │   ├─ metadata.py      # メタデータ 生成プロンプト
+ │   ├─ metadata_enhance.py # メタデータ補足プロンプト/推定ロジック
  │   ├─ sql.py           # SQL 生成プロンプト
  │   ├─ analysis.py      # データ分析プロンプト
  │   └─ visualize.py     # 可視化指示プロンプト
